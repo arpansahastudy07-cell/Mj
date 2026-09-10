@@ -1,0 +1,1951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<title>Mutual Fund Transaction Editor</title>
+
+<!-- PWA: manifest + theme -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#09090b">
+
+<!-- Icons -->
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16.png">
+<link rel="shortcut icon" href="./icons/favicon.ico">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+
+<!-- iOS standalone app support (iOS ignores manifest display/orientation) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MF Editor">
+
+<!-- Android/Chrome standalone -->
+<meta name="mobile-web-app-capable" content="yes">
+
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #09090b;
+    --surface: #18181b;
+    --surface-hover: #27272a;
+    --border: #27272a;
+    --border-strong: #3f3f46;
+    --text: #f4f4f5;
+    --text-muted: #a1a1aa;
+    
+    --primary: #c084fc; 
+    --primary-hover: #d8b4fe;
+    --accent: #ccff00; 
+    --accent-hover: #d9ff33;
+    
+    --red: #ef4444;
+    --red-bg: rgba(239, 68, 68, 0.1);
+    --green: #10b981;
+    --green-bg: rgba(16, 185, 129, 0.1);
+    
+    --radius: 12px;
+    --radius-lg: 24px;
+    --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+
+    --font-base: clamp(14px, 1.5vw, 15px);
+    --font-lg: clamp(16px, 2vw, 18px);
+    --font-xl: clamp(20px, 3vw, 24px);
+    --font-2xl: clamp(24px, 4vw, 32px);
+    --font-3xl: clamp(28px, 5vw, 36px);
+  }
+  
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; overflow-x: hidden;
+  }
+  html { scrollbar-gutter: stable; }
+  
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    font-size: var(--font-base);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  h1, h2, h3 { margin: 0; font-weight: 800; letter-spacing: -0.03em; }
+  p { margin: 0; }
+  button, input, select { 
+    font-family: inherit; 
+    font-size: 14px; 
+    color: var(--text); 
+    min-height: 44px; /* Mobile touch target safety */
+  }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- Layout ---------- */
+  .app-header {
+    padding: clamp(20px, 5vw, 40px) 20px clamp(16px, 4vw, 20px);
+    border-bottom: 1px solid var(--border);
+    background: rgba(9, 9, 11, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .app-header-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  .app-header h1 {
+    font-size: var(--font-2xl);
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.2;
+    word-break: break-word;
+  }
+  .app-header .subtitle {
+    color: var(--text-muted);
+    margin-top: 8px;
+    font-weight: 500;
+  }
+  .app-main {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: clamp(20px, 4vw, 32px) 20px 80px;
+    width: 100%;
+  }
+
+  /* ---------- Upload / dropzone ---------- */
+  .upload-section { margin-bottom: 8px; }
+  .dropzone {
+    background: var(--surface);
+    border: 2px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    padding: clamp(32px, 8vw, 64px) clamp(16px, 4vw, 24px);
+    text-align: center;
+    transition: all .2s ease;
+  }
+  .dropzone.drag-over {
+    border-color: var(--accent);
+    background: rgba(204, 255, 0, 0.05);
+    transform: scale(1.02);
+  }
+  .dropzone-icon {
+    width: clamp(48px, 10vw, 56px);
+    height: clamp(48px, 10vw, 56px);
+    color: var(--accent);
+    margin: 0 auto 20px;
+    filter: drop-shadow(0 0 12px rgba(204, 255, 0, 0.3));
+  }
+  .dropzone h2 { font-size: var(--font-xl); margin-bottom: 12px; }
+  .dropzone p {
+    color: var(--text-muted);
+    max-width: 420px;
+    margin: 0 auto;
+  }
+  .dropzone .btn { margin-top: 24px; }
+  
+  .alert {
+    margin-bottom: 20px;
+    padding: 14px 20px;
+    border-radius: var(--radius);
+    font-weight: 600;
+  }
+  .alert-error { background: var(--red-bg); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.3); }
+  .alert-success { background: var(--green-bg); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.3); }
+
+  /* ---------- File bar ---------- */
+  .file-bar {
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    gap: 16px; 
+    flex-wrap: wrap;
+    background: var(--surface); 
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg); 
+    padding: clamp(16px, 3vw, 20px) clamp(16px, 4vw, 24px); 
+    margin-bottom: 24px;
+  }
+  .file-bar-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 200px; }
+  .file-name { font-weight: 700; font-size: var(--font-lg); color: var(--accent); word-break: break-word; line-height: 1.3; }
+  .file-meta { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+  .file-bar-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 0 0 auto; justify-content: flex-end; min-width: 0; }
+  .status-pill {
+    font-size: 12px; font-weight: 800; padding: 7px 12px;
+    border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 34px; line-height: 1.1; white-space: nowrap;
+    width: auto; max-width: 100%; flex: 0 0 auto;
+  }
+  .status-clean { background: var(--green-bg); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.2); }
+  .status-dirty { background: rgba(204, 255, 0, 0.1); color: var(--accent); border: 1px solid rgba(204, 255, 0, 0.2); }
+
+  /* ---------- Ledger summary strip ---------- */
+  .ledger-strip {
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+    gap: clamp(12px, 3vw, 16px); 
+    margin-bottom: 24px;
+  }
+  .ledger-cell {
+    background: var(--surface); 
+    padding: clamp(16px, 4vw, 24px);
+    border-radius: var(--radius-lg); 
+    border: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .ledger-cell:hover { transform: translateY(-4px); border-color: var(--border-strong); }
+  .ledger-label { color: var(--text-muted); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .ledger-value { color: var(--text); font-size: var(--font-3xl); font-weight: 800; line-height: 1.1; word-break: break-word; }
+  
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    flex-wrap: wrap; 
+    margin-bottom: 16px;
+  }
+  .search-input, .filter-select {
+    padding: 10px 16px; 
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius); 
+    background: var(--bg); 
+    color: var(--text);
+    font-weight: 500; 
+    transition: all 0.2s;
+    width: 100%;
+  }
+  .search-input:focus, .filter-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(204,255,0,0.15); }
+  
+  /* Desktop Toolbar Layout */
+  .search-input { flex: 1 1 200px; }
+  .filter-select { flex: 1 1 140px; }
+  .toolbar-spacer { flex: 1 1 auto; display: block; }
+  .download-group { display: flex; align-items: center; gap: 12px; flex-wrap: nowrap; }
+
+  /* Mobile Toolbar Layout Override */
+  @media (max-width: 767px) {
+    .toolbar { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .toolbar-spacer { display: none; }
+    .download-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+    .toolbar .btn { width: 100%; justify-content: center; }
+  }
+  
+  .table-meta { font-size: 14px; color: var(--text-muted); margin: 8px 4px 16px; font-weight: 500; }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px 20px; border-radius: var(--radius); border: none;
+    font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    text-align: center; white-space: nowrap;
+  }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn-primary { background: var(--primary); color: #09090b; }
+  .btn-primary:hover { background: var(--primary-hover); transform: scale(1.02); }
+  .btn-accent { background: var(--accent); color: #09090b; }
+  .btn-accent:hover { background: var(--accent-hover); transform: scale(1.02); box-shadow: 0 0 16px rgba(204,255,0,0.3); }
+  .btn-ghost { background: var(--surface); border: 1px solid var(--border-strong); color: var(--text); }
+  .btn-ghost:hover { background: var(--surface-hover); border-color: var(--text-muted); }
+  .btn-danger { background: var(--red); color: #fff; }
+  
+  .btn-icon {
+    padding: 8px 16px; font-size: 13px; border-radius: 8px;
+    background: var(--bg); border: 1px solid var(--border-strong);
+  }
+  .btn-edit:hover { border-color: var(--primary); color: var(--primary); background: rgba(192, 132, 252, 0.1); }
+  .btn-delete:hover { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+
+  /* ---------- Table ---------- */
+  .table-wrap {
+    background: var(--surface); 
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg); 
+    overflow: hidden;
+  }
+  .txn-table { width: 100%; border-collapse: collapse; }
+  .txn-table thead th {
+    text-align: left; font-size: 13px; color: var(--text-muted); font-weight: 700;
+    padding: 16px 20px; background: var(--bg); border-bottom: 1px solid var(--border);
+    text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+  }
+  .txn-table th.num, .txn-table td.num { text-align: right; }
+  .txn-table thead th.sortable { cursor: pointer; transition: color 0.2s; user-select: none; }
+  .txn-table thead th.sortable:hover, .txn-table thead th.sort-active { color: var(--accent); }
+  .txn-table td { padding: 16px 20px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 500; }
+  .txn-table tbody tr:hover { background: var(--surface-hover); }
+  .actions-col { white-space: nowrap; text-align: right; }
+  .empty-state { padding: 64px 20px; text-align: center; color: var(--text-muted); font-weight: 600; font-size: 16px; }
+
+  /* Tablet horizontal scroll (between mobile and full desktop) */
+  @media (min-width: 768px) and (max-width: 1024px) {
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .txn-table { min-width: 900px; }
+  }
+
+
+  /* Fund management: keep the wide master table inside its own scroll region.
+     This prevents the whole dialog/page from becoming horizontally awkward on desktop. */
+  #fundDetailsModalOverlay .table-wrap {
+    overflow: auto;
+    max-height: min(54vh, 560px);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable both-edges;
+  }
+  #fundDetailsModalOverlay .txn-table {
+    min-width: 1080px;
+  }
+  #fundDetailsModalOverlay .txn-table th,
+  #fundDetailsModalOverlay .txn-table td {
+    white-space: nowrap;
+  }
+  #fundDetailsModalOverlay .txn-table td:nth-child(2) {
+    white-space: normal;
+    min-width: 260px;
+    max-width: 360px;
+  }
+
+  /* Mobile Card Layout for Tables */
+  @media (max-width: 767px) {
+    .table-wrap { background: transparent; border: none; overflow: visible; }
+    .txn-table thead { display: none; } /* Original behavior preserved, sorting hidden on mobile */
+    .txn-table, .txn-table tbody, .txn-table tr, .txn-table td { display: block; width: 100%; }
+    
+    .txn-table tr { 
+      border: 1px solid var(--border-strong); 
+      border-radius: var(--radius-lg); 
+      margin-bottom: 16px; 
+      padding: 20px; 
+      background: var(--surface); 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .txn-table td { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center;
+      padding: 12px 0; 
+      border-bottom: 1px solid var(--border); 
+      text-align: right;
+      gap: 16px;
+    }
+    .txn-table td:last-child { border-bottom: none; padding-bottom: 0; margin-top: 8px; justify-content: flex-end; }
+    .txn-table td::before { 
+      content: attr(data-label); 
+      font-weight: 700; 
+      color: var(--text-muted); 
+      text-transform: uppercase; 
+      font-size: 12px; 
+      text-align: left;
+      flex-shrink: 0;
+    }
+    .txn-table td[data-label="Amount"] { font-size: 16px; font-weight: 800; color: var(--accent) !important; }
+    .txn-table td[data-label="Fund name"], .txn-table td[data-label="Fund Name"] { font-weight: 700; color: var(--text); }
+  }
+
+  /* ---------- Modals ---------- */
+  body.modal-open {
+    overflow: hidden;
+  }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(9,9,11,0.85); backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; z-index: 100;
+    overflow-y: auto; overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal {
+    background: var(--surface); 
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg); 
+    width: min(680px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
+    display: flex; 
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+    margin: auto;
+  }
+  .modal-lg { width: min(1180px, calc(100vw - 48px)); max-width: 1180px; }
+  .modal-sm { max-width: 440px; }
+  
+  #txnForm, #mfForm {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: clamp(16px, 4vw, 24px); border-bottom: 1px solid var(--border); 
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 5;
+    background: var(--surface);
+  }
+  .modal-header h2 { font-size: var(--font-xl); color: var(--text); }
+  .modal-close {
+    background: none; border: none; font-size: 32px; color: var(--text-muted);
+    cursor: pointer; transition: color 0.2s; line-height: 1; padding: 0 8px;
+  }
+  .modal-close:hover { color: var(--accent); }
+  
+  .modal-body, #txnForm .modal-body, #mfForm .modal-body { 
+    padding: clamp(16px, 4vw, 24px); 
+    overflow-y: auto; 
+    flex: 1 1 auto; 
+    min-height: 0;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  
+  .modal-footer, #txnForm .modal-footer, #mfForm .modal-footer {
+    display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;
+    padding: clamp(16px, 4vw, 20px) clamp(16px, 4vw, 24px); 
+    border-top: 1px solid var(--border); background: var(--bg); 
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 5;
+  }
+  
+  .modal-footer .btn {
+    min-height: 44px;
+  }
+  
+  @media (max-width: 480px) {
+    .file-bar-actions { width: 100%; justify-content: space-between; }
+    .file-bar-actions .status-pill { flex: 0 1 auto; }
+    .file-bar-actions .btn { flex: 1 1 auto; }
+    .modal-overlay {
+      padding: 12px;
+      align-items: center;
+    }
+    .modal {
+      width: calc(100vw - 24px);
+      max-width: none;
+      max-height: calc(100dvh - 24px);
+      border-radius: 18px;
+    }
+    #fundDetailsModalOverlay .table-wrap {
+      max-height: none;
+      overflow: visible;
+    }
+    #fundDetailsModalOverlay .txn-table { min-width: 0; }
+    #fundDetailsModalOverlay .txn-table th,
+    #fundDetailsModalOverlay .txn-table td { white-space: normal; }
+    #fundDetailsModalOverlay .txn-table td:nth-child(2) {
+      min-width: 0; max-width: none;
+    }
+    .status-pill { max-width: 100%; }
+    .modal-body, #txnForm .modal-body, #mfForm .modal-body {
+      padding: 16px;
+    }
+    .modal-footer, #txnForm .modal-footer, #mfForm .modal-footer {
+      flex-direction: column-reverse; 
+      align-items: stretch;
+      padding: 12px 16px;
+      gap: 10px;
+    }
+    .modal-footer .btn { 
+      width: 100%; 
+      margin: 0; 
+    }
+  }
+
+  .form-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .form-grid label { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-muted); }
+  .form-grid input, .form-grid select {
+    padding: 12px 16px; border: 1px solid var(--border-strong);
+    border-radius: var(--radius); background: var(--bg); font-weight: 500; transition: border-color 0.2s; width: 100%;
+  }
+  .form-grid input:focus, .form-grid select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(204,255,0,0.15); }
+  
+  @media (min-width: 640px) {
+    .form-grid { grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-grid label.span-2 { grid-column: 1 / -1; }
+  }
+  
+  .mf-lookup-group { background: var(--bg); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 24px; }
+  .mf-lookup-row { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+  .mf-lookup-row input { flex: 1; padding: 12px 16px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); }
+  @media (min-width: 481px) { .mf-lookup-row { flex-direction: row; } }
+  
+  .mf-result-item { background: var(--bg); border: 1px solid var(--border); padding: 16px; margin-top: 8px; border-radius: var(--radius); }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    padding: 16px 32px; border-radius: 999px; font-size: 15px; font-weight: 700;
+    z-index: 200; box-shadow: 0 12px 32px rgba(0,0,0,0.4); color: #09090b;
+    width: max-content; max-width: calc(100vw - 48px); text-align: center; word-break: break-word;
+  }
+  .toast-success { background: var(--accent); }
+  .toast-error { background: var(--red); color: #fff; }
+  
+  @media (max-width: 480px) {
+    .toast { bottom: 16px; width: calc(100% - 32px); max-width: none; border-radius: 16px; }
+  }
+
+  [hidden] { display: none !important; }
+
+  /* ---------- Intro animation ---------- */
+  .intro-overlay {
+    position: fixed; inset: 0; z-index: 9999; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity .6s cubic-bezier(0.8,0,0.2,1);
+  }
+  .intro-overlay.intro-hide { opacity: 0; pointer-events: none; }
+  .intro-logo .bar { transform-origin: bottom; transform: scaleY(0); animation: introBarGrow .5s cubic-bezier(.34,1.56,.64,1) forwards; }
+  .intro-logo .bar1 { fill: var(--primary); animation-delay: .15s; }
+  .intro-logo .bar2 { fill: var(--primary-hover); animation-delay: .3s; }
+  .intro-logo .bar3 { fill: var(--accent); animation-delay: .45s; }
+  .intro-title { color: var(--text); font-size: var(--font-xl); font-weight: 800; opacity: 0; animation: introTitleIn .5s ease forwards .9s; text-align: center; }
+  .intro-progress-bar { height: 4px; width: 0%; background: var(--accent); border-radius: 99px; animation: introProgressFill 1.3s ease forwards .3s; }
+  
+  @keyframes introBarGrow { to { transform: scaleY(1); } }
+  @keyframes introTitleIn { to { opacity: 1; transform: translateY(0); } }
+  @keyframes introProgressFill { to { width: 100%; } }
+</style>
+</head>
+<body>
+
+<div class="intro-overlay" id="introOverlay" aria-hidden="true">
+  <div class="intro-content" style="display:flex; flex-direction:column; align-items:center; gap:24px;">
+    <svg class="intro-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:80px; height:80px;">
+      <rect class="bar bar1" x="10" y="40" width="10" height="14" rx="4"/>
+      <rect class="bar bar2" x="26" y="28" width="10" height="26" rx="4"/>
+      <rect class="bar bar3" x="42" y="16" width="10" height="38" rx="4"/>
+    </svg>
+    <h1 class="intro-title">Transaction Editor</h1>
+    <div style="width:200px; height:4px; background:var(--border); border-radius:99px; overflow:hidden;"><div class="intro-progress-bar"></div></div>
+  </div>
+</div>
+
+<header class="app-header">
+  <div class="app-header-inner">
+    <h1>Mutual Fund Transaction Editor</h1>
+    <p class="subtitle">Edit your Excel transaction records and manage fund master details seamlessly.</p>
+  </div>
+</header>
+
+<main class="app-main">
+
+  <section class="upload-section" id="uploadSection">
+    <div class="dropzone" id="dropzone">
+      <svg class="dropzone-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 6h17l9 9v27a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M29 6v9h9" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M15 26h18M15 31h18M15 36h11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <h2>Drop your transaction file</h2>
+      <p>Drag and drop your .xlsx or .json file here. Fully local, highly secure.</p>
+      <button type="button" class="btn btn-primary" id="browseBtn">Select File</button>
+      <input type="file" id="fileInput" accept=".xlsx,.json" hidden>
+    </div>
+    <div class="alert alert-error" id="uploadError" hidden></div>
+  </section>
+
+  <section class="dashboard" id="dashboard" hidden>
+
+    <div class="file-bar">
+      <div class="file-bar-info">
+        <span class="file-name" id="fileName"></span>
+        <span class="file-meta" id="fileMeta"></span>
+      </div>
+      <div class="file-bar-actions">
+        <span class="status-pill status-clean" id="unsavedStatus">Synced</span>
+        <button type="button" class="btn btn-ghost" id="changeFileBtn">Change file</button>
+      </div>
+    </div>
+
+    <div class="ledger-strip" id="summaryStrip"></div>
+
+    <div class="toolbar">
+      <input type="search" class="search-input" id="searchInput" placeholder="Search parameters...">
+      <select class="filter-select" id="filterCategory"><option value="">All categories</option></select>
+      <select class="filter-select" id="filterFund"><option value="">All funds</option></select>
+      <select class="filter-select" id="filterMode"><option value="">All modes</option></select>
+      <div class="toolbar-spacer"></div>
+      <button type="button" class="btn btn-ghost" id="manageFundsBtn">Manage Details</button>
+      <button type="button" class="btn btn-primary" id="addTxnBtn">Add Transaction</button>
+      <div class="download-group">
+        <select class="filter-select" id="downloadFormat">
+          <option value="xlsx" selected>Excel (.xlsx)</option>
+          <option value="json">JSON (.json)</option>
+        </select>
+        <button type="button" class="btn btn-accent" id="downloadBtn">Download</button>
+      </div>
+    </div>
+
+    <div class="table-meta" id="resultCount"></div>
+
+    <div class="table-wrap">
+      <table class="txn-table">
+        <thead>
+          <tr id="txnTableHeadRow">
+            <th class="sortable" data-sort="date">Date</th>
+            <th class="sortable" data-sort="fund">Fund name</th>
+            <th class="sortable" data-sort="platform">Platform</th>
+            <th class="sortable" data-sort="category">Category</th>
+            <th class="sortable" data-sort="subCategory">Sub-category</th>
+            <th class="sortable" data-sort="mode">Mode</th>
+            <th class="num sortable" data-sort="amount">Amount</th>
+            <th class="num sortable" data-sort="units">Units</th>
+            <th class="actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="txnTableBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" hidden>No records match your query.</div>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- Add / Edit Transaction Modal -->
+<div class="modal-overlay" id="txnModalOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2 id="txnModalTitle">Add transaction</h2>
+      <button type="button" class="modal-close" id="txnModalClose">&times;</button>
+    </div>
+    <form id="txnForm">
+      <div class="modal-body">
+        <div class="alert alert-error" id="formError" hidden></div>
+        <div class="form-grid">
+          <label>Date <input type="date" id="fDate" required></label>
+          <label class="span-2">Fund name <input type="text" id="fFund" list="fundList" autocomplete="off" required><datalist id="fundList"></datalist></label>
+          <label>Platform <input type="text" id="fPlatform" list="platformList" autocomplete="off"><datalist id="platformList"></datalist></label>
+          <label>Category <input type="text" id="fCategory" list="categoryList" autocomplete="off"><datalist id="categoryList"></datalist></label>
+          <label>Sub-category <input type="text" id="fSubcategory" list="subcategoryList" autocomplete="off"><datalist id="subcategoryList"></datalist></label>
+          <label>Mode <input type="text" id="fMode" list="modeList" autocomplete="off"><datalist id="modeList"></datalist></label>
+          <label>Amount (₹) <input type="number" step="any" id="fAmount" required></label>
+          <label>Units <input type="number" step="any" id="fUnits" required></label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="txnCancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="txnSaveBtn">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Fund Details Management Modal -->
+<div class="modal-overlay" id="fundDetailsModalOverlay" hidden>
+  <div class="modal modal-lg" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2 id="fundDetailsModalTitle">Manage Fund Details</h2>
+      <button type="button" class="modal-close" id="fundDetailsModalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="toolbar" style="margin-bottom: 20px;">
+        <input type="search" class="search-input" id="fundSearchInput" placeholder="Search funds...">
+        <div class="toolbar-spacer"></div>
+        <button type="button" class="btn btn-primary" id="addFundModalBtn">Add Fund</button>
+      </div>
+      <div class="table-wrap">
+        <table class="txn-table">
+          <thead>
+            <tr>
+              <th>Code</th> <th>Fund Name</th> <th>Platform</th> <th>AMC</th>
+              <th>Category</th> <th>Sub Category</th> <th>Type</th> <th class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="fundTableBody"></tbody>
+        </table>
+        <div class="empty-state" id="fundEmptyState" hidden>No funds recorded.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" id="fundDetailsDoneBtn">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Transaction Confirm Modal -->
+<div class="modal-overlay" id="deleteModalOverlay" hidden>
+  <div class="modal modal-sm" role="dialog">
+    <div class="modal-header"><h2 id="deleteModalTitle">Confirm Deletion</h2></div>
+    <div class="modal-body">
+      <p id="deleteSummary" style="font-weight:700; color:var(--text); margin-bottom:8px;"></p>
+      <p style="color:var(--text-muted); font-size:14px;">This action will remove the record. It only takes effect on your next download.</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" id="deleteCancelBtn">Cancel</button>
+      <button type="button" class="btn btn-danger" id="deleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Fund Confirm Modal -->
+<div class="modal-overlay" id="deleteFundModalOverlay" hidden>
+  <div class="modal modal-sm" role="dialog">
+    <div class="modal-header"><h2 id="deleteFundModalTitle">Delete Fund?</h2></div>
+    <div class="modal-body">
+      <p id="deleteFundSummary" style="font-weight:700; color:var(--text); margin-bottom:8px;"></p>
+      <p style="color:var(--text-muted); font-size:14px;">This removes the master record from the details sheet.</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" id="deleteFundCancelBtn">Cancel</button>
+      <button type="button" class="btn btn-danger" id="deleteFundConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit Fund Modal (with MFAPI Integration) -->
+<div class="modal-overlay" id="mfModalOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2 id="mfModalTitle">Add Fund Details</h2>
+      <button type="button" class="modal-close" id="mfModalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error" id="mfFormError" hidden></div>
+      <div class="alert alert-success" id="mfSuccessAlert" hidden>✓ Fund details fetched</div>
+
+      <div class="mf-lookup-group" id="mfLookupGroup">
+        <label style="font-size:14px; font-weight:700; color:var(--accent);">API Sync Lookup</label>
+        <div class="mf-lookup-row">
+          <input type="text" id="mfLookupQuery" placeholder="Scheme Code or Fund Name..." autocomplete="off">
+          <button type="button" class="btn btn-primary" id="mfFetchBtn">Fetch Data</button>
+        </div>
+        <div id="mfResultsWrapper" hidden>
+          <div style="font-size:13px; font-weight:700; color:var(--text-muted); margin-top:16px;">Matching Assets:</div>
+          <div id="mfResultsList" style="max-height:180px; overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <form id="mfForm">
+        <div class="form-grid">
+          <label>Scheme Code <input type="text" id="mfCode"></label>
+          <label>Platform <input type="text" id="mfPlatform" list="platformList" autocomplete="off"></label>
+          <label class="span-2">Fund Name <input type="text" id="mfFundName" required></label>
+          <label>AMC <input type="text" id="mfAmc"></label>
+          <label>Category <input type="text" id="mfCategory"></label>
+          <label>Sub Category <input type="text" id="mfSubCategory"></label>
+          <label>Fund Type
+            <select id="mfFundType" required>
+              <option value="">Select fund type</option>
+              <option value="Active Fund">Active Fund</option>
+              <option value="Passive Fund">Passive Fund</option>
+            </select>
+          </label>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" id="mfRefreshBtn" hidden>Refresh API</button>
+      <button type="button" class="btn btn-ghost" id="mfCancelBtn">Cancel</button>
+      <button type="button" class="btn btn-primary" id="mfSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Existing Fund Duplicate Check Modal -->
+<div class="modal-overlay" id="duplicateModalOverlay" hidden>
+  <div class="modal modal-sm" role="dialog">
+    <div class="modal-header"><h2 id="duplicateModalTitle">Fund Existing</h2></div>
+    <div class="modal-body">
+      <p id="duplicateSummary" style="font-weight:700; color:var(--text); margin-bottom:8px;"></p>
+      <p style="color:var(--text-muted); font-size:14px;">This scheme is already present in your details sheet.</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" id="duplicateCancelBtn">Cancel</button>
+      <button type="button" class="btn btn-primary" id="duplicateEditBtn">Edit Instead</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<!-- JS is fully preserved to maintain all logical hooks from original file -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     CONFIG
+     ============================================================ */
+  var RECORD_SHEET_NAME = 'RECORD';
+  var DETAILS_SHEET_NAME = 'DETAILS';
+  var TITLE_ROW = 1;                  
+  var HEADER_ROW = 2;                 
+  var DATA_START_ROW = 3;             
+  var DETAILS_HEADER_ROW = 2;        
+  var DETAILS_DATA_START_ROW = 3;    
+
+  var COL = { DATE: 1, FUND: 2, PLATFORM: 3, CATEGORY: 4, SUBCATEGORY: 5, MODE: 6, AMOUNT: 7, UNITS: 8 };
+  var EXPECTED_RECORD_HEADERS = ['date', 'fundnames', 'platform', 'category', 'subcategory', 'mode', 'amount', 'units'];
+  var EXPECTED_DETAILS_HEADERS = ['code', 'fundnames', 'platform', 'amc', 'category', 'subcategory', 'fundtype'];
+
+  var DCOL = { CODE: 1, FUND: 2, PLATFORM: 3, AMC: 4, CATEGORY: 5, SUBCATEGORY: 6, FUNDTYPE: 7 };
+
+  var FALLBACK_NUMFMT = {
+    1: 'mm-dd-yy',
+    7: '"₹"#,##0.00;[Red]-"₹"#,##0.00',
+    8: '0.000" UNITS"'
+  };
+
+  var DEFAULT_MODES = ['SIP', 'LUMPSUM', 'STP', 'SWITCH IN', 'SWITCH OUT'];
+  var ALLOWED_FUND_TYPES = ['Active Fund', 'Passive Fund'];
+
+  function normalizeFundType(value) {
+    var v = cellText(value).trim().toLowerCase();
+    if (v === 'active fund' || v === 'active') return 'Active Fund';
+    if (v === 'passive fund' || v === 'passive') return 'Passive Fund';
+    return '';
+  }
+
+  /* ============================================================
+     STATE
+     ============================================================ */
+  var state = {
+    workbook: null,
+    recordSheet: null,
+    detailsSheet: null,
+    transactions: [],
+    detailsFunds: [],       
+    detailsMap: { map: new Map(), codeMap: new Map() },
+    fileName: '',
+    sheetCount: 0,
+    unsavedChanges: false,
+    filters: { search: '', category: '', fund: '', mode: '' },
+    fundFilters: { search: '' },
+    sort: { key: null, dir: 1 }
+  };
+
+  var modalMode = 'add';        
+  var modalIndex = null;
+  var initialFundValueOnEditOpen = '';
+  var pendingDeleteIndex = null;
+  var pendingDeleteFundIndex = null;
+  var mfModalMode = 'add';      
+  var mfEditIndex = null;
+  var toastTimer = null;
+
+  /* ============================================================
+     UTILITIES
+     ============================================================ */
+  function $(id) { return document.getElementById(id); }
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function cellText(v) {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'object') {
+      if (Array.isArray(v.richText)) return v.richText.map(function (rt) { return rt.text; }).join('');
+      if (v.text !== undefined) return String(v.text).trim();
+      if (v.result !== undefined) return String(v.result).trim();
+    }
+    return String(v).trim();
+  }
+
+  function toNumber(v) {
+    if (v === null || v === undefined || v === '') return null;
+    var n = typeof v === 'number' ? v : parseFloat(v);
+    return isFinite(n) ? n : null;
+  }
+
+  function normalizeHeader(v) {
+    return cellText(v).toLowerCase().replace(/[\s\-_]/g, '');
+  }
+
+  function formatINR(n) {
+    if (n === null || n === undefined || !isFinite(n)) return '—';
+    var sign = n < 0 ? '-' : '';
+    var abs = Math.abs(n);
+    return sign + '₹' + abs.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function formatUnits(n) {
+    if (n === null || n === undefined || !isFinite(n)) return '—';
+    return n.toLocaleString('en-IN', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + ' UNITS';
+  }
+
+  function formatDateDisplay(d) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return '—';
+    return new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(d);
+  }
+
+  function dateToInputValue(d) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+    var y = d.getUTCFullYear();
+    var m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    var day = String(d.getUTCDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+
+  function inputValueToDate(v) {
+    if (!v) return null;
+    var parts = v.split('-').map(Number);
+    return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  }
+
+  function showToast(msg, isError) {
+    var el = $('toast');
+    el.textContent = msg;
+    el.className = 'toast ' + (isError ? 'toast-error' : 'toast-success');
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.hidden = true; }, 3500);
+  }
+
+  function showUploadError(msg) {
+    var el = $('uploadError');
+    el.textContent = msg;
+    el.hidden = false;
+  }
+  function hideUploadError() { $('uploadError').hidden = true; }
+
+  var openModalIds = new Set();
+  function showModal(id) {
+    var el = $(id);
+    if (!el) return;
+    el.hidden = false;
+    openModalIds.add(id);
+    document.body.classList.add('modal-open');
+  }
+  function hideModal(id) {
+    var el = $(id);
+    if (!el) return;
+    el.hidden = true;
+    openModalIds.delete(id);
+    if (openModalIds.size === 0) document.body.classList.remove('modal-open');
+  }
+
+  /* ============================================================
+     PARSING & WORKSHEET INITIALIZATION
+     ============================================================ */
+  function findLastDataRow(sheet, minRow) {
+    var last = minRow - 1;
+    sheet.eachRow({ includeEmpty: false }, function (row, rowNumber) {
+      if (rowNumber >= minRow) last = Math.max(last, rowNumber);
+    });
+    return last;
+  }
+
+  function detectSheetLayout(sheet, expectedHeaders) {
+    var maxScan = Math.min(10, sheet.rowCount || 10);
+    var bestRow = -1;
+    var bestMatchCount = 0;
+    for (var r = 1; r <= maxScan; r++) {
+      var row = sheet.getRow(r);
+      var matchCount = 0;
+      for (var c = 1; c <= expectedHeaders.length; c++) {
+        if (normalizeHeader(row.getCell(c).value) === expectedHeaders[c - 1]) matchCount++;
+      }
+      if (matchCount >= Math.ceil(expectedHeaders.length * 0.6) && matchCount > bestMatchCount) {
+        bestRow = r;
+        bestMatchCount = matchCount;
+      }
+    }
+    if (bestRow > 0) return { headerRow: bestRow, dataStartRow: bestRow + 1, hasHeader: true };
+    var row1 = sheet.getRow(1);
+    for (var c = 1; c <= Math.min(expectedHeaders.length, 3); c++) {
+      if (cellText(row1.getCell(c).value)) return { headerRow: 0, dataStartRow: 1, hasHeader: false };
+    }
+    return { headerRow: 1, dataStartRow: 2, hasHeader: true };
+  }
+
+  function headersLookValid(record) {
+    if (HEADER_ROW === 0) return true; 
+    var row = record.getRow(HEADER_ROW);
+    var matches = 0;
+    for (var c = 1; c <= 8; c++) {
+      if (normalizeHeader(row.getCell(c).value) === EXPECTED_RECORD_HEADERS[c - 1]) matches++;
+    }
+    return matches >= 5; 
+  }
+
+  function parseRecordSheet(record) {
+    var lastRow = findLastDataRow(record, DATA_START_ROW);
+    var txns = [];
+    for (var r = DATA_START_ROW; r <= lastRow; r++) {
+      var row = record.getRow(r);
+      var dateVal = row.getCell(COL.DATE).value;
+      var date = null;
+      if (dateVal && Object.prototype.toString.call(dateVal) === '[object Date]' && !isNaN(dateVal.getTime())) {
+        date = new Date(dateVal.getTime());
+      } else if (typeof dateVal === 'number') {
+        date = excelSerialToDate(dateVal);
+      }
+      txns.push({
+        date: date,
+        fund: cellText(row.getCell(COL.FUND).value),
+        platform: cellText(row.getCell(COL.PLATFORM).value),
+        category: cellText(row.getCell(COL.CATEGORY).value),
+        subCategory: cellText(row.getCell(COL.SUBCATEGORY).value),
+        mode: cellText(row.getCell(COL.MODE).value),
+        amount: toNumber(row.getCell(COL.AMOUNT).value),
+        units: toNumber(row.getCell(COL.UNITS).value)
+      });
+    }
+    return txns;
+  }
+
+  function excelSerialToDate(serial) {
+    var ms = Math.round((serial - 25569) * 86400 * 1000);
+    return new Date(ms);
+  }
+
+  function getOrCreateDetailsSheet(wb) {
+    var ws = wb.getWorksheet(DETAILS_SHEET_NAME);
+    if (!ws) {
+      ws = wb.addWorksheet(DETAILS_SHEET_NAME);
+      var headerRow = ws.getRow(DETAILS_HEADER_ROW);
+      headerRow.values = [
+        'Code', 'Fund Names', 'Platform', 'AMC', 'Category', 'Sub Category', 'Fund Type'
+      ];
+      headerRow.commit();
+    }
+    return ws;
+  }
+
+  function parseDetailsSheet(details) {
+    var lastRow = findLastDataRow(details, DETAILS_DATA_START_ROW);
+    var map = new Map();
+    var codeMap = new Map();
+    var fundsList = [];
+    for (var r = DETAILS_DATA_START_ROW; r <= lastRow; r++) {
+      var row = details.getRow(r);
+      var code = cellText(row.getCell(DCOL.CODE).value);
+      var fund = cellText(row.getCell(DCOL.FUND).value);
+      if (!fund && !code) continue;
+      var fundObj = {
+        rowNum: r,
+        code: code,
+        fundName: fund,
+        platform: cellText(row.getCell(DCOL.PLATFORM).value),
+        amc: cellText(row.getCell(DCOL.AMC).value),
+        category: cellText(row.getCell(DCOL.CATEGORY).value),
+        subCategory: cellText(row.getCell(DCOL.SUBCATEGORY).value),
+        fundType: normalizeFundType(row.getCell(DCOL.FUNDTYPE).value)
+      };
+      if (fund) map.set(fund.toLowerCase(), fundObj);
+      if (code) codeMap.set(String(code), fundObj);
+      fundsList.push(fundObj);
+    }
+    return { map: map, codeMap: codeMap, list: fundsList };
+  }
+
+  /* ============================================================
+     FILE HANDLING
+     ============================================================ */
+  function handleFile(file) {
+    hideUploadError();
+    if (!file) return;
+    var name = file.name || '';
+    if (typeof ExcelJS === 'undefined') {
+      showUploadError('Could not load the Excel processing library. Check your internet connection and reload the page.');
+      return;
+    }
+    if (/\.xlsx$/i.test(name)) {
+      handleXlsxFile(file);
+    } else if (/\.json$/i.test(name)) {
+      handleJsonFile(file);
+    } else {
+      showUploadError('Please upload a valid .xlsx or .json file.');
+    }
+  }
+
+  function finishLoadingFile(fileName) {
+    state.fileName = fileName;
+    state.sheetCount = state.workbook.worksheets.length;
+    state.unsavedChanges = false;
+    state.filters = { search: '', category: '', fund: '', mode: '' };
+    state.fundFilters = { search: '' };
+    $('searchInput').value = '';
+
+    refreshDatalists();
+    showDashboard();
+    renderAll();
+  }
+
+  function handleXlsxFile(file) {
+    file.arrayBuffer().then(function (buf) {
+      var wb = new ExcelJS.Workbook();
+      return wb.xlsx.load(buf).then(function () { return wb; });
+    }).then(function (wb) {
+      var record = wb.getWorksheet(RECORD_SHEET_NAME);
+      if (!record) {
+        showUploadError('Unable to load this workbook. Please make sure it is a valid .xlsx file containing a RECORD sheet.');
+        return;
+      }
+      var recLayout = detectSheetLayout(record, EXPECTED_RECORD_HEADERS);
+      HEADER_ROW = recLayout.headerRow;
+      DATA_START_ROW = recLayout.dataStartRow;
+
+      if (!headersLookValid(record)) {
+        showUploadError('Missing or unexpected column headers in RECORD sheet.');
+        return;
+      }
+
+      var details = getOrCreateDetailsSheet(wb);
+      var detLayout = detectSheetLayout(details, EXPECTED_DETAILS_HEADERS);
+      DETAILS_HEADER_ROW = detLayout.headerRow;
+      DETAILS_DATA_START_ROW = detLayout.dataStartRow;
+
+      var transactions = parseRecordSheet(record);
+      var detailsParsed = parseDetailsSheet(details);
+
+      state.workbook = wb;
+      state.recordSheet = record;
+      state.detailsSheet = details;
+      state.transactions = transactions;
+      state.detailsFunds = detailsParsed.list;
+      state.detailsMap = detailsParsed;
+
+      finishLoadingFile(file.name);
+      showToast('Workbook loaded successfully.');
+    }).catch(function (err) {
+      console.error(err);
+      showUploadError('Unable to load this workbook. Please make sure it is a valid .xlsx file containing a RECORD sheet.');
+    });
+  }
+
+  function isoDateStringToDate(v) {
+    if (!v) return null;
+    var s = String(v).trim();
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+    var d = new Date(s);
+    if (isNaN(d.getTime())) return null;
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  }
+
+  function dateToIsoDateString(d) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return null;
+    var y = d.getUTCFullYear();
+    var m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    var day = String(d.getUTCDate()).padStart(2, '0');
+    return y + '-' + m + '-' + day;
+  }
+
+  function parseJsonData(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('This JSON file is not a valid MF Transaction Editor file.');
+    }
+    if (data.format && data.format !== 'MF_TRANSACTION_EDITOR') {
+      throw new Error('This JSON file is not a recognized MF Transaction Editor file.');
+    }
+    if (!Array.isArray(data.record)) {
+      throw new Error('Invalid JSON file: missing or invalid "record" array.');
+    }
+    var rawDetails = Array.isArray(data.details) ? data.details : [];
+
+    var transactions = data.record.map(function (r, i) {
+      if (!r || typeof r !== 'object') throw new Error('Invalid transaction data at record ' + (i + 1) + '.');
+      var date = isoDateStringToDate(r.date);
+      var fund = cellText(r.fund);
+      var amount = toNumber(r.amount);
+      var units = toNumber(r.units);
+      if (!date) throw new Error('Invalid or missing date for transaction ' + (i + 1) + '.');
+      if (!fund) throw new Error('Missing fund name for transaction ' + (i + 1) + '.');
+      if (amount === null) throw new Error('Invalid amount for transaction ' + (i + 1) + '.');
+      if (units === null) throw new Error('Invalid units for transaction ' + (i + 1) + '.');
+      return {
+        date: date,
+        fund: fund,
+        platform: cellText(r.platform),
+        category: cellText(r.category),
+        subCategory: cellText(r.subCategory),
+        mode: cellText(r.mode),
+        amount: amount,
+        units: units
+      };
+    });
+
+    var detailsFunds = rawDetails.map(function (f, i) {
+      if (!f || typeof f !== 'object') throw new Error('Invalid fund detail data at entry ' + (i + 1) + '.');
+      var fundName = cellText(f.fundName);
+      var code = cellText(f.code);
+      if (!fundName && !code) throw new Error('Fund detail entry ' + (i + 1) + ' is missing both code and fund name.');
+      return {
+        code: code,
+        fundName: fundName,
+        platform: cellText(f.platform),
+        amc: cellText(f.amc),
+        category: cellText(f.category),
+        subCategory: cellText(f.subCategory),
+        fundType: normalizeFundType(f.fundType)
+      };
+    });
+
+    return { transactions: transactions, details: detailsFunds };
+  }
+
+  function buildWorkbookFromParsed(parsed) {
+    var wb = new ExcelJS.Workbook();
+    var record = wb.addWorksheet(RECORD_SHEET_NAME);
+    HEADER_ROW = 2;
+    DATA_START_ROW = 3;
+    DETAILS_HEADER_ROW = 2;
+    DETAILS_DATA_START_ROW = 3;
+    var headerRow = record.getRow(HEADER_ROW);
+    headerRow.values = ['Date', 'Fund Names', 'Platform', 'Category', 'Sub Category', 'Mode', 'Amount', 'Units'];
+    headerRow.commit();
+
+    var details = getOrCreateDetailsSheet(wb);
+
+    state.workbook = wb;
+    state.recordSheet = record;
+    state.detailsSheet = details;
+    state.transactions = [];
+    state.detailsFunds = [];
+
+    parsed.transactions.forEach(function (t) { addTransactionToSheet(t); });
+    state.detailsFunds = parsed.details.slice();
+    syncDetailsSheetToWorkbook();
+  }
+
+  function handleJsonFile(file) {
+    file.text().then(function (text) {
+      var data;
+      try { data = JSON.parse(text); } catch (e) {
+        showUploadError('Please upload a valid JSON file. The file could not be parsed.');
+        return;
+      }
+      var parsed;
+      try { parsed = parseJsonData(data); } catch (e) {
+        console.error(e);
+        showUploadError(e.message || 'This JSON file is not a valid MF Transaction Editor file.');
+        return;
+      }
+      try { buildWorkbookFromParsed(parsed); } catch (e) {
+        console.error(e);
+        showUploadError('Unable to load this JSON file. Please try again.');
+        return;
+      }
+      finishLoadingFile(file.name);
+      showToast('JSON file loaded successfully.');
+    }).catch(function (err) {
+      console.error(err);
+      showUploadError('Unable to read this file. Please try again.');
+    });
+  }
+
+  function showDashboard() {
+    $('fileName').textContent = state.fileName;
+    $('uploadSection').hidden = true;
+    $('dashboard').hidden = false;
+    updateUnsavedStatus();
+  }
+
+  /* ============================================================
+     SUMMARY / RENDER
+     ============================================================ */
+  function computeSummary() {
+    var count = state.transactions.length;
+    var fundSet = new Set();
+    var totalAmount = 0;
+    var lastDate = null;
+    for (var i = 0; i < state.transactions.length; i++) {
+      var t = state.transactions[i];
+      if (t.fund) fundSet.add(t.fund.trim().toLowerCase());
+      if (t.amount !== null && isFinite(t.amount)) totalAmount += t.amount;
+      if (t.date instanceof Date && !isNaN(t.date.getTime())) {
+        if (!lastDate || t.date > lastDate) lastDate = t.date;
+      }
+    }
+    return { count: count, fundsCount: fundSet.size, totalAmount: totalAmount, lastDate: lastDate };
+  }
+
+  function renderSummary() {
+    var s = computeSummary();
+    $('summaryStrip').innerHTML =
+      '<div class="ledger-cell"><span class="ledger-label">Transactions</span><span class="ledger-value">' + s.count + '</span></div>' +
+      '<div class="ledger-cell"><span class="ledger-label">Funds Tracked</span><span class="ledger-value">' + s.fundsCount + '</span></div>' +
+      '<div class="ledger-cell"><span class="ledger-label">Gross Value</span><span class="ledger-value" style="color:var(--accent);">' + formatINR(s.totalAmount) + '</span></div>' +
+      '<div class="ledger-cell"><span class="ledger-label">Last Record</span><span class="ledger-value">' + formatDateDisplay(s.lastDate) + '</span></div>';
+    $('fileMeta').textContent = s.count + ' records loaded in environment.';
+  }
+
+  function getFilteredIndices() {
+    var q = state.filters.search.trim().toLowerCase();
+    var out = [];
+    for (var i = 0; i < state.transactions.length; i++) {
+      var t = state.transactions[i];
+      if (state.filters.category && t.category !== state.filters.category) continue;
+      if (state.filters.fund && t.fund !== state.filters.fund) continue;
+      if (state.filters.mode && t.mode !== state.filters.mode) continue;
+      if (q) {
+        var hay = [t.fund, t.platform, t.category, t.subCategory, t.mode].join(' ').toLowerCase();
+        if (hay.indexOf(q) === -1) continue;
+      }
+      out.push(i);
+    }
+    if (state.sort.key) {
+      var key = state.sort.key;
+      var dir = state.sort.dir;
+      out.sort(function (ia, ib) {
+        var va = state.transactions[ia][key];
+        var vb = state.transactions[ib][key];
+        var cmp;
+        if (key === 'date') {
+          var ta = (va instanceof Date && !isNaN(va.getTime())) ? va.getTime() : -Infinity;
+          var tb = (vb instanceof Date && !isNaN(vb.getTime())) ? vb.getTime() : -Infinity;
+          cmp = ta - tb;
+        } else if (key === 'amount' || key === 'units') {
+          var na = (typeof va === 'number' && isFinite(va)) ? va : -Infinity;
+          var nb = (typeof vb === 'number' && isFinite(vb)) ? vb : -Infinity;
+          cmp = na - nb;
+        } else {
+          cmp = String(va || '').localeCompare(String(vb || ''), undefined, { sensitivity: 'base' });
+        }
+        if (cmp === 0) return ia - ib;
+        return cmp * dir;
+      });
+    }
+    return out;
+  }
+
+  function renderTable() {
+    var indices = getFilteredIndices();
+    var tbody = $('txnTableBody');
+    var empty = $('emptyState');
+    $('resultCount').textContent = 'Displaying ' + indices.length + ' of ' + state.transactions.length + ' elements';
+
+    if (indices.length === 0) {
+      tbody.innerHTML = '';
+      empty.hidden = false;
+      return;
+    }
+    empty.hidden = true;
+
+    var rows = indices.map(function (i) {
+      var t = state.transactions[i];
+      return '<tr data-index="' + i + '">' +
+        '<td data-label="Date">' + formatDateDisplay(t.date) + '</td>' +
+        '<td data-label="Fund name">' + escapeHtml(t.fund) + '</td>' +
+        '<td data-label="Platform">' + escapeHtml(t.platform) + '</td>' +
+        '<td data-label="Category">' + escapeHtml(t.category) + '</td>' +
+        '<td data-label="Sub-category">' + escapeHtml(t.subCategory) + '</td>' +
+        '<td data-label="Mode">' + escapeHtml(t.mode) + '</td>' +
+        '<td data-label="Amount" class="num">' + formatINR(t.amount) + '</td>' +
+        '<td data-label="Units" class="num">' + formatUnits(t.units) + '</td>' +
+        '<td data-label="Actions" class="actions-col">' +
+        '<button type="button" class="btn-icon btn-edit" data-action="edit" data-index="' + i + '">Edit</button> ' +
+        '<button type="button" class="btn-icon btn-delete" data-action="delete" data-index="' + i + '">Del</button>' +
+        '</td></tr>';
+    }).join('');
+    tbody.innerHTML = rows;
+  }
+
+  function renderFundTable() {
+    var q = state.fundFilters.search.trim().toLowerCase();
+    var tbody = $('fundTableBody');
+    var empty = $('fundEmptyState');
+    var filtered = state.detailsFunds.filter(function (f) {
+      if (!q) return true;
+      var hay = [f.code, f.fundName, f.platform, f.amc, f.category, f.subCategory, f.fundType].join(' ').toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '';
+      empty.hidden = false;
+      return;
+    }
+    empty.hidden = true;
+
+    var rows = filtered.map(function (f) {
+      var idx = state.detailsFunds.indexOf(f);
+      return '<tr>' +
+        '<td data-label="Code">' + escapeHtml(f.code) + '</td>' +
+        '<td data-label="Fund Name" style="color:var(--primary);">' + escapeHtml(f.fundName) + '</td>' +
+        '<td data-label="Platform">' + escapeHtml(f.platform) + '</td>' +
+        '<td data-label="AMC">' + escapeHtml(f.amc) + '</td>' +
+        '<td data-label="Category">' + escapeHtml(f.category) + '</td>' +
+        '<td data-label="Sub Category">' + escapeHtml(f.subCategory) + '</td>' +
+        '<td data-label="Fund Type">' + escapeHtml(f.fundType) + '</td>' +
+        '<td data-label="Actions" class="actions-col">' +
+        '<button type="button" class="btn-icon btn-edit" data-action="edit-fund" data-index="' + idx + '">Edit</button> ' +
+        '<button type="button" class="btn-icon btn-delete" data-action="delete-fund" data-index="' + idx + '">Del</button>' +
+        '</td></tr>';
+    }).join('');
+    tbody.innerHTML = rows;
+  }
+
+  function renderAll() {
+    renderSummary();
+    renderTable();
+  }
+
+  function setDatalist(id, values) {
+    var arr = Array.from(values).sort(function (a, b) { return a.localeCompare(b); });
+    $(id).innerHTML = arr.map(function (v) { return '<option value="' + escapeHtml(v) + '">'; }).join('');
+  }
+
+  function setSelectOptions(id, values, allLabel) {
+    var el = $(id);
+    var current = el.value;
+    var arr = Array.from(values).sort(function (a, b) { return a.localeCompare(b); });
+    el.innerHTML = '<option value="">' + allLabel + '</option>' +
+      arr.map(function (v) { return '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>'; }).join('');
+    if (arr.indexOf(current) !== -1) el.value = current;
+  }
+
+  function refreshDatalists() {
+    var funds = new Set(), platforms = new Set(), categories = new Set(), subcats = new Set();
+    var modes = new Set(DEFAULT_MODES);
+
+    state.transactions.forEach(function (t) {
+      if (t.fund) funds.add(t.fund);
+      if (t.platform) platforms.add(t.platform);
+      if (t.category) categories.add(t.category);
+      if (t.subCategory) subcats.add(t.subCategory);
+      if (t.mode) modes.add(t.mode);
+    });
+    state.detailsFunds.forEach(function (v) {
+      if (v.fundName) funds.add(v.platform);
+      if (v.platform) platforms.add(v.platform);
+      if (v.category) categories.add(v.category);
+      if (v.subCategory) subcats.add(v.subCategory);
+    });
+
+    setDatalist('fundList', funds);
+    setDatalist('platformList', platforms);
+    setDatalist('categoryList', categories);
+    setDatalist('subcategoryList', subcats);
+    setDatalist('modeList', modes);
+
+    setSelectOptions('filterCategory', categories, 'All categories');
+    setSelectOptions('filterFund', funds, 'All funds');
+    setSelectOptions('filterMode', modes, 'All modes');
+  }
+
+  /* ============================================================
+     UNSAVED STATUS
+     ============================================================ */
+  function markUnsaved() {
+    state.unsavedChanges = true;
+    updateUnsavedStatus();
+  }
+  function updateUnsavedStatus() {
+    var el = $('unsavedStatus');
+    if (state.unsavedChanges) {
+      el.textContent = 'Unsaved';
+      el.className = 'status-pill status-dirty';
+    } else {
+      el.textContent = 'Synced';
+      el.className = 'status-pill status-clean';
+    }
+  }
+
+  /* ============================================================
+     WORKBOOK MUTATIONS (TRANSACTIONS)
+     ============================================================ */
+  function applyFallbackStyle(cell, colIndex) {
+    cell.font = { name: 'Calibri', size: 11 };
+    cell.alignment = { vertical: 'middle', horizontal: (colIndex === 7 || colIndex === 8) ? 'center' : 'left' };
+    cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+    if (FALLBACK_NUMFMT[colIndex]) cell.numFmt = FALLBACK_NUMFMT[colIndex];
+  }
+
+  function txnToValues(t) {
+    return [t.date, t.fund, t.platform, t.category, t.subCategory, t.mode, t.amount, t.units];
+  }
+
+  function addTransactionToSheet(t) {
+    var ws = state.recordSheet;
+    var newIndex = state.transactions.length;
+    var newRowNum = newIndex + DATA_START_ROW;
+    var refRow = newIndex > 0 ? ws.getRow(newRowNum - 1) : null;
+    var newRow = ws.getRow(newRowNum);
+    var values = txnToValues(t);
+
+    for (var c = 1; c <= 8; c++) {
+      var cell = newRow.getCell(c);
+      cell.value = values[c - 1];
+      if (refRow) {
+        var refCell = refRow.getCell(c);
+        cell.numFmt = refCell.numFmt;
+        cell.font = refCell.font;
+        cell.alignment = refCell.alignment;
+        cell.border = refCell.border;
+        cell.fill = refCell.fill;
+      } else {
+        applyFallbackStyle(cell, c);
+      }
+    }
+    if (refRow && refRow.height) newRow.height = refRow.height;
+    newRow.commit();
+    state.transactions.push(t);
+  }
+
+  function updateTransactionInSheet(index, t) {
+    var rowNum = index + DATA_START_ROW;
+    var row = state.recordSheet.getRow(rowNum);
+    var values = txnToValues(t);
+    for (var c = 1; c <= 8; c++) { row.getCell(c).value = values[c - 1]; }
+    row.commit();
+    state.transactions[index] = t;
+  }
+
+  function deleteTransactionFromSheet(index) {
+    var rowNum = index + DATA_START_ROW;
+    state.recordSheet.spliceRows(rowNum, 1);
+    state.transactions.splice(index, 1);
+  }
+
+  /* ============================================================
+     WORKBOOK MUTATIONS (DETAILS SHEET & MFAPI INTEGRATION)
+     ============================================================ */
+  function syncDetailsSheetToWorkbook() {
+    var ws = state.detailsSheet;
+    var lastRow = findLastDataRow(ws, DETAILS_DATA_START_ROW);
+    for (var r = lastRow; r >= DETAILS_DATA_START_ROW; r--) { ws.spliceRows(r, 1); }
+    for (var i = 0; i < state.detailsFunds.length; i++) {
+      var f = state.detailsFunds[i];
+      var rowNum = DETAILS_DATA_START_ROW + i;
+      var row = ws.getRow(rowNum);
+      row.values = [f.code, f.fundName, f.platform, f.amc, f.category, f.subCategory, f.fundType];
+      for (var c = 1; c <= 7; c++) {
+        var cell = row.getCell(c);
+        cell.font = { name: 'Calibri', size: 11 };
+        cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+      }
+      row.commit();
+      f.rowNum = rowNum;
+    }
+    state.detailsMap = parseDetailsSheet(ws);
+  }
+
+  function mapMetaToFund(meta, existingPlatform) {
+    return {
+      code: String(meta.scheme_code || meta.schemeCode || ''),
+      fundName: cellText(meta.scheme_name || meta.schemeName || ''),
+      platform: existingPlatform || '',
+      amc: cellText(meta.mutual_fund_family || meta.fund_house || meta.amc || ''),
+      category: cellText(meta.scheme_category || meta.category || ''),
+      subCategory: cellText(meta.sub_category || meta.subCategory || ''),
+      fundType: normalizeFundType(meta.scheme_type || meta.fund_type || meta.type || '')
+    };
+  }
+
+  function populateMfForm(fundData) {
+    $('mfCode').value = fundData.code || '';
+    $('mfFundName').value = fundData.fundName || '';
+    if (fundData.platform !== undefined && fundData.platform !== '') $('mfPlatform').value = fundData.platform;
+    $('mfAmc').value = fundData.amc || '';
+    $('mfCategory').value = fundData.category || '';
+    $('mfSubCategory').value = fundData.subCategory || '';
+    $('mfFundType').value = normalizeFundType(fundData.fundType);
+  }
+
+  function clearMfForm() {
+    ['mfLookupQuery', 'mfCode', 'mfPlatform', 'mfFundName', 'mfAmc', 'mfCategory', 'mfSubCategory', 'mfFundType'].forEach(function (id) {
+      $(id).value = '';
+    });
+    $('mfResultsWrapper').hidden = true;
+    $('mfResultsList').innerHTML = '';
+    $('mfFormError').hidden = true;
+    $('mfSuccessAlert').hidden = true;
+  }
+
+  function executeMfapiFetch(queryOrCode, onComplete) {
+    var clean = String(queryOrCode).trim();
+    var errEl = $('mfFormError');
+    var successEl = $('mfSuccessAlert');
+    var fetchBtn = $('mfFetchBtn');
+
+    errEl.hidden = true;
+    successEl.hidden = true;
+
+    if (!clean) {
+      errEl.textContent = 'Target query needed.';
+      errEl.hidden = false;
+      return;
+    }
+
+    fetchBtn.textContent = '...';
+    fetchBtn.disabled = true;
+
+    if (/^\d+$/.test(clean)) {
+      fetch('https://api.mfapi.in/mf/' + clean)
+        .then(function (res) { if (!res.ok) throw new Error('Not found'); return res.json(); })
+        .then(function (data) {
+          fetchBtn.textContent = 'Fetch Data'; fetchBtn.disabled = false;
+          if (!data || !data.meta) { errEl.textContent = 'API Error: Not found.'; errEl.hidden = false; return; }
+          var mapped = mapMetaToFund(data.meta, $('mfPlatform').value);
+          populateMfForm(mapped);
+          successEl.textContent = '✓ Synchronized data from API'; successEl.hidden = false;
+          if (onComplete) onComplete(mapped);
+        })
+        .catch(function () {
+          fetchBtn.textContent = 'Fetch Data'; fetchBtn.disabled = false;
+          errEl.textContent = 'Connection timeout to API.'; errEl.hidden = false;
+        });
+    } else {
+      fetch('https://api.mfapi.in/mf/search?q=' + encodeURIComponent(clean))
+        .then(function (res) { if (!res.ok) throw new Error('Search failed'); return res.json(); })
+        .then(function (results) {
+          fetchBtn.textContent = 'Fetch Data'; fetchBtn.disabled = false;
+          if (!results || !Array.isArray(results) || results.length === 0) {
+            errEl.textContent = 'No matching parameters returned.'; errEl.hidden = false; return;
+          }
+          if (results.length === 1) {
+            executeMfapiFetch(results[0].schemeCode, onComplete);
+          } else {
+            var listEl = $('mfResultsList');
+            listEl.innerHTML = results.map(function (item) {
+              return '<div class="mf-result-item" style="display:flex; justify-content:space-between; align-items:center;">' +
+                '<div>' +
+                '<div style="font-weight:700; color:var(--text); font-size:14px;">' + escapeHtml(item.schemeName) + '</div>' +
+                '<div style="color:var(--text-muted); font-size:12px;">ID: ' + escapeHtml(item.schemeCode) + '</div>' +
+                '</div>' +
+                '<button type="button" class="btn-icon btn-ghost" data-code="' + item.schemeCode + '">Select</button>' +
+                '</div>';
+            }).join('');
+            $('mfResultsWrapper').hidden = false;
+          }
+        })
+        .catch(function () {
+          fetchBtn.textContent = 'Fetch Data'; fetchBtn.disabled = false;
+          errEl.textContent = 'Connection timeout to API.'; errEl.hidden = false;
+        });
+    }
+  }
+
+  /* ============================================================
+     EXCEL TABLES & VALIDATION
+     ============================================================ */
+  function ensureTableOnSheet(ws, tableName, colCount, startRow, itemCount, columnsDef) {
+    var lastRow = Math.max(startRow - 1, startRow + itemCount - 1);
+    var colLetter = String.fromCharCode(64 + colCount);
+    var ref = 'A' + (startRow - 1) + ':' + colLetter + lastRow;
+
+    if (!ws.tables) {
+      ws.tables = {};
+    } else {
+      delete ws.tables[tableName];
+      Object.keys(ws.tables).forEach(function (tName) {
+        if (tName.toLowerCase() === tableName.toLowerCase()) {
+          delete ws.tables[tName];
+        }
+      });
+    }
+    ws.addTable({
+      name: tableName, ref: ref, headerRow: true, totalsRow: false,
+      style: { theme: 'TableStyleMedium9', showFirstColumn: false, showLastColumn: false, showRowStripes: true, showColumnStripes: false },
+      columns: columnsDef, rows: []
+    });
+  }
+
+  /* ============================================================
+     DOWNLOAD / EXPORT
+     ============================================================ */
+  function getBaseFileName() {
+    var name = state.fileName || 'MF transaction';
+    return name.replace(/\.(xlsx|json)$/i, '');
+  }
+
+  function triggerDownload(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function exportExcel() {
+    if (!state.workbook) return;
+    try {
+      validateAndPrepareTables();
+    } catch (err) {
+      console.error(err); showToast('System validation error: ' + err.message, true); return;
+    }
+    var filename = getBaseFileName() + '.xlsx';
+    state.workbook.xlsx.writeBuffer().then(function (buf) {
+      var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      triggerDownload(blob, filename);
+      state.unsavedChanges = false; updateUnsavedStatus();
+      showToast('Export successful.');
+    }).catch(function (err) {
+      console.error(err); showToast('Export failed.', true);
+    });
+  }
+
+  function exportJson() {
+    try {
+      var payload = {
+        format: 'MF_TRANSACTION_EDITOR', version: 1,
+        record: state.transactions.map(function (t) {
+          return {
+            date: dateToIsoDateString(t.date), fund: t.fund || '', platform: t.platform || '',
+            category: t.category || '', subCategory: t.subCategory || '', mode: t.mode || '',
+            amount: (t.amount === null || t.amount === undefined) ? 0 : t.amount,
+            units: (t.units === null || t.units === undefined) ? 0 : t.units
+          };
+        }),
+        details: state.detailsFunds.map(function (f) {
+          return { code: f.code || '', fundName: f.fundName || '', platform: f.platform || '', amc: f.amc || '', category: f.category || '', subCategory: f.subCategory || '', fundType: f.fundType || '' };
+        })
+      };
+      var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      triggerDownload(blob, getBaseFileName() + '.json');
+      state.unsavedChanges = false; updateUnsavedStatus();
+      showToast('Export successful.');
+    } catch (err) {
+      console.error(err); showToast('Export failed.', true);
+    }
+  }
+
+  function downloadCurrentData() {
+    if (!state.workbook) return;
+    var format = $('downloadFormat') ? $('downloadFormat').value : 'xlsx';
+    if (format === 'json') exportJson(); else exportExcel();
+  }
+
+  function validateAndPrepareTables() {
+    var recordWs = state.recordSheet; var detailsWs = state.detailsSheet;
+    if (!recordWs) throw new Error('RECORD architecture missing');
+    if (!detailsWs) throw new Error('DETAILS architecture missing');
+
+    ensureTableOnSheet(recordWs, 'RECORD_Table', 8, DATA_START_ROW, state.transactions.length, [
+      { name: 'Date', filterButton: true }, { name: 'Fund Names', filterButton: true }, { name: 'Platform', filterButton: true },
+      { name: 'Category', filterButton: true }, { name: 'Sub Category', filterButton: true }, { name: 'Mode', filterButton: true },
+      { name: 'Amount', filterButton: true }, { name: 'Units', filterButton: true }
+    ]);
+    ensureTableOnSheet(detailsWs, 'DETAILS_Table', 7, DATA_START_ROW, state.detailsFunds.length, [
+      { name: 'Code', filterButton: true }, { name: 'Fund Names', filterButton: true }, { name: 'Platform', filterButton: true },
+      { name: 'AMC', filterButton: true }, { name: 'Category', filterButton: true }, { name: 'Sub Category', filterButton: true },
+      { name: 'Fund Type', filterButton: true }
+    ]);
+  }
+
+  /* ============================================================
+     EVENT WIRING & MODALS
+     ============================================================ */
+  function openAddTxnModal() {
+    modalMode = 'add'; modalIndex = null; $('txnModalTitle').textContent = 'Add Record';
+    ['fDate', 'fFund', 'fPlatform', 'fCategory', 'fSubcategory', 'fMode', 'fAmount', 'fUnits'].forEach(function (id) { $(id).value = ''; });
+    $('formError').hidden = true; showModal('txnModalOverlay');
+    setTimeout(function () { $('fDate').focus(); }, 0);
+  }
+
+  function openEditTxnModal(index) {
+    modalMode = 'edit'; modalIndex = index;
+    var t = state.transactions[index];
+    $('txnModalTitle').textContent = 'Edit Record';
+    $('fDate').value = dateToInputValue(t.date);
+    $('fFund').value = t.fund || ''; $('fPlatform').value = t.platform || '';
+    $('fCategory').value = t.category || ''; $('fSubcategory').value = t.subCategory || '';
+    $('fMode').value = t.mode || ''; $('fAmount').value = (t.amount === null || t.amount === undefined) ? '' : t.amount;
+    $('fUnits').value = (t.units === null || t.units === undefined) ? '' : t.units;
+    initialFundValueOnEditOpen = (t.fund || '').trim().toLowerCase();
+    $('formError').hidden = true; showModal('txnModalOverlay');
+  }
+
+  function onFundFieldInput(e) {
+    var val = e.target.value.trim().toLowerCase();
+    var shouldAutofill = modalMode === 'add' || val !== initialFundValueOnEditOpen;
+    if (!shouldAutofill) return;
+    var match = state.detailsMap.map.get(val);
+    if (match) {
+      $('fPlatform').value = match.platform || ''; $('fCategory').value = match.category || ''; $('fSubcategory').value = match.subCategory || '';
+    }
+  }
+
+  function openFundDetailsModal() {
+    state.fundFilters.search = ''; $('fundSearchInput').value = ''; renderFundTable(); showModal('fundDetailsModalOverlay');
+  }
+
+  function openAddMfModal() {
+    mfModalMode = 'add'; mfEditIndex = null; $('mfModalTitle').textContent = 'Add Fund Detail';
+    $('mfRefreshBtn').hidden = true; clearMfForm(); showModal('mfModalOverlay');
+  }
+
+  function openEditMfModal(fundIndex) {
+    mfModalMode = 'edit'; mfEditIndex = fundIndex;
+    var f = state.detailsFunds[fundIndex];
+    $('mfModalTitle').textContent = 'Edit Fund Detail';
+    $('mfRefreshBtn').hidden = false; clearMfForm();
+    $('mfLookupQuery').value = f.code || f.fundName;
+    populateMfForm(f); showModal('mfModalOverlay');
+  }
+
+  function saveFundFromForm() {
+    var code = $('mfCode').value.trim(), fundName = $('mfFundName').value.trim(), platform = $('mfPlatform').value.trim();
+    var amc = $('mfAmc').value.trim(), category = $('mfCategory').value.trim(), subCategory = $('mfSubCategory').value.trim(), fundType = $('mfFundType').value.trim();
+    var errEl = $('mfFormError');
+
+    if (!fundName) { errEl.textContent = 'Fund Name is mandatory.'; errEl.hidden = false; return; }
+    if (ALLOWED_FUND_TYPES.indexOf(fundType) === -1) { errEl.textContent = 'Type must be Active or Passive.'; errEl.hidden = false; $('mfFundType').focus(); return; }
+
+    if (mfModalMode === 'add') {
+      var existingByCode = code && state.detailsMap.codeMap.get(code);
+      var existingByName = fundName && state.detailsMap.map.get(fundName.toLowerCase());
+      if (existingByCode || existingByName) {
+        var match = existingByCode || existingByName;
+        var idx = state.detailsFunds.indexOf(match);
+        $('duplicateSummary').textContent = (match.code || 'N/A') + ' // ' + match.fundName;
+        showModal('duplicateModalOverlay');
+        $('duplicateEditBtn').onclick = function () { hideModal('duplicateModalOverlay'); hideModal('mfModalOverlay'); openEditMfModal(idx); };
+        return;
+      }
+    }
+
+    var fundObj = { code: code, fundName: fundName, platform: platform, amc: amc, category: category, subCategory: subCategory, fundType: fundType };
+    if (mfModalMode === 'add') { state.detailsFunds.push(fundObj); showToast('Asset recorded.'); } 
+    else { state.detailsFunds[mfEditIndex] = fundObj; showToast('Asset updated.'); }
+
+    syncDetailsSheetToWorkbook(); markUnsaved(); refreshDatalists(); renderAll(); renderFundTable(); hideModal('mfModalOverlay');
+  }
+
+  function init() {
+    var dropzone = $('dropzone'), fileInput = $('fileInput');
+    $('browseBtn').addEventListener('click', function () { fileInput.click(); });
+    $('changeFileBtn').addEventListener('click', function () {
+      if (state.unsavedChanges && !confirm('Unsaved records exist in environment. Wipe and proceed?')) return;
+      fileInput.click();
+    });
+    fileInput.addEventListener('change', function (e) { var file = e.target.files[0]; e.target.value = ''; if (file) handleFile(file); });
+    ['dragenter', 'dragover'].forEach(function (evt) { dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.add('drag-over'); }); });
+    ['dragleave', 'drop'].forEach(function (evt) { dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.remove('drag-over'); }); });
+    dropzone.addEventListener('drop', function (e) {
+      var file = e.dataTransfer.files && e.dataTransfer.files[0]; if (!file) return;
+      if (state.unsavedChanges && !confirm('Unsaved records exist in environment. Wipe and proceed?')) return;
+      handleFile(file);
+    });
+
+    $('searchInput').addEventListener('input', function (e) { state.filters.search = e.target.value; renderTable(); });
+    $('filterCategory').addEventListener('change', function (e) { state.filters.category = e.target.value; renderTable(); });
+    $('filterFund').addEventListener('change', function (e) { state.filters.fund = e.target.value; renderTable(); });
+    $('filterMode').addEventListener('change', function (e) { state.filters.mode = e.target.value; renderTable(); });
+    $('txnTableHeadRow').addEventListener('click', function (e) {
+      var th = e.target.closest('th[data-sort]'); if (!th) return;
+      var key = th.getAttribute('data-sort');
+      if (state.sort.key === key) { state.sort.dir = state.sort.dir === 1 ? -1 : 1; } else { state.sort.key = key; state.sort.dir = 1; }
+      renderTable();
+    });
+
+    $('addTxnBtn').addEventListener('click', openAddTxnModal);
+    $('manageFundsBtn').addEventListener('click', openFundDetailsModal);
+    $('downloadBtn').addEventListener('click', downloadCurrentData);
+    $('txnTableBody').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]'); if (!btn) return;
+      var index = parseInt(btn.getAttribute('data-index'), 10);
+      if (btn.getAttribute('data-action') === 'edit') openEditTxnModal(index);
+      else if (btn.getAttribute('data-action') === 'delete') {
+        pendingDeleteIndex = index; var t = state.transactions[index];
+        $('deleteSummary').textContent = (t.fund || 'Unknown') + ' — ' + formatINR(t.amount);
+        showModal('deleteModalOverlay');
+      }
+    });
+
+    $('fFund').addEventListener('input', onFundFieldInput);
+    $('txnForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var dateVal = $('fDate').value, fund = $('fFund').value.trim(), platform = $('fPlatform').value.trim();
+      var category = $('fCategory').value.trim(), subCategory = $('fSubcategory').value.trim(), mode = $('fMode').value.trim();
+      var amountStr = $('fAmount').value, unitsStr = $('fUnits').value;
+      var errs = [];
+      if (!dateVal) errs.push('Date is required.'); if (!fund) errs.push('Fund name is required.');
+      var amount = parseFloat(amountStr), units = parseFloat(unitsStr);
+      if (amountStr === '' || !isFinite(amount)) errs.push('Valid amount needed.');
+      if (unitsStr === '' || !isFinite(units)) errs.push('Valid units needed.');
+      if (errs.length) { var el = $('formError'); el.textContent = errs.join(' '); el.hidden = false; return; }
+
+      var txn = { date: inputValueToDate(dateVal), fund: fund, platform: platform, category: category, subCategory: subCategory, mode: mode, amount: amount, units: units };
+      try {
+        if (modalMode === 'add') { addTransactionToSheet(txn); showToast('Record added.'); } else { updateTransactionInSheet(modalIndex, txn); showToast('Record updated.'); }
+        markUnsaved(); refreshDatalists(); renderAll(); hideModal('txnModalOverlay');
+      } catch (err) { console.error(err); var el2 = $('formError'); el2.textContent = 'System failure saving transaction.'; el2.hidden = false; }
+    });
+
+    $('txnCancelBtn').addEventListener('click', function () { hideModal('txnModalOverlay'); });
+    $('txnModalClose').addEventListener('click', function () { hideModal('txnModalOverlay'); });
+    $('deleteConfirmBtn').addEventListener('click', function () {
+      if (pendingDeleteIndex === null) return;
+      try { deleteTransactionFromSheet(pendingDeleteIndex); markUnsaved(); refreshDatalists(); renderAll(); showToast('Record removed.'); }
+      catch (err) { console.error(err); showToast('System failure.', true); }
+      pendingDeleteIndex = null; hideModal('deleteModalOverlay');
+    });
+    $('deleteCancelBtn').addEventListener('click', function () { pendingDeleteIndex = null; hideModal('deleteModalOverlay'); });
+
+    $('fundSearchInput').addEventListener('input', function (e) { state.fundFilters.search = e.target.value; renderFundTable(); });
+    $('addFundModalBtn').addEventListener('click', openAddMfModal);
+    $('fundDetailsDoneBtn').addEventListener('click', function () { hideModal('fundDetailsModalOverlay'); });
+    $('fundDetailsModalClose').addEventListener('click', function () { hideModal('fundDetailsModalOverlay'); });
+    $('fundTableBody').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action]'); if (!btn) return;
+      var idx = parseInt(btn.getAttribute('data-index'), 10);
+      if (btn.getAttribute('data-action') === 'edit-fund') { openEditMfModal(idx); }
+      else if (btn.getAttribute('data-action') === 'delete-fund') {
+        pendingDeleteFundIndex = idx; var f = state.detailsFunds[idx];
+        $('deleteFundSummary').textContent = (f.code ? 'Code: ' + f.code + ' — ' : '') + f.fundName; showModal('deleteFundModalOverlay');
+      }
+    });
+
+    $('deleteFundConfirmBtn').addEventListener('click', function () {
+      if (pendingDeleteFundIndex === null) return;
+      state.detailsFunds.splice(pendingDeleteFundIndex, 1); syncDetailsSheetToWorkbook(); markUnsaved();
+      refreshDatalists(); renderAll(); renderFundTable(); showToast('Asset removed.'); pendingDeleteFundIndex = null; hideModal('deleteFundModalOverlay');
+    });
+    $('deleteFundCancelBtn').addEventListener('click', function () { pendingDeleteFundIndex = null; hideModal('deleteFundModalOverlay'); });
+
+    $('mfFetchBtn').addEventListener('click', function () { executeMfapiFetch($('mfLookupQuery').value); });
+    $('mfLookupQuery').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); executeMfapiFetch(e.target.value); } });
+    $('mfResultsList').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-code]'); if (!btn) return;
+      $('mfResultsWrapper').hidden = true; executeMfapiFetch(btn.getAttribute('data-code'));
+    });
+    $('mfRefreshBtn').addEventListener('click', function () { executeMfapiFetch($('mfCode').value || $('mfFundName').value); });
+    $('mfSaveBtn').addEventListener('click', saveFundFromForm);
+    $('mfCancelBtn').addEventListener('click', function () { hideModal('mfModalOverlay'); });
+    $('mfModalClose').addEventListener('click', function () { hideModal('mfModalOverlay'); });
+    $('duplicateCancelBtn').addEventListener('click', function () { hideModal('duplicateModalOverlay'); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        hideModal('txnModalOverlay'); hideModal('deleteModalOverlay'); hideModal('fundDetailsModalOverlay');
+        hideModal('mfModalOverlay'); hideModal('duplicateModalOverlay'); hideModal('deleteFundModalOverlay');
+      }
+    });
+  }
+
+  function dismissIntro() {
+    var overlay = $('introOverlay'); if (!overlay) return;
+    overlay.classList.add('intro-hide');
+    overlay.addEventListener('transitionend', function () { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, { once: true });
+    setTimeout(function () { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 700);
+  }
+
+  init();
+  if (document.readyState === 'complete') { setTimeout(dismissIntro, 1200); } else { window.addEventListener('load', function () { setTimeout(dismissIntro, 1200); }); }
+})();
+</script>
+
+<!-- PWA: register service worker for offline support -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function (err) {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>
