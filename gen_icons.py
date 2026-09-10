@@ -64,17 +64,17 @@ def make_icon(path, size, maskable=False, rounded=False):
 
 sizes_regular = [72, 96, 128, 144, 152, 192, 384, 512]
 for s in sizes_regular:
-    make_icon(f"icons/icon-{s}.png", s, maskable=False, rounded=True)
+    make_icon(f"icon-{s}.png", s, maskable=False, rounded=True)
 
-make_icon("icons/maskable-192.png", 192, maskable=True)
-make_icon("icons/maskable-512.png", 512, maskable=True)
+make_icon("maskable-192.png", 192, maskable=True)
+make_icon("maskable-512.png", 512, maskable=True)
 
-make_icon("icons/apple-touch-icon.png", 180, maskable=False, rounded=True)
-make_icon("icons/favicon-32.png", 32, maskable=False, rounded=False)
-make_icon("icons/favicon-16.png", 16, maskable=False, rounded=False)
+make_icon("apple-touch-icon.png", 180, maskable=False, rounded=True)
+make_icon("favicon-32.png", 32, maskable=False, rounded=False)
+make_icon("favicon-16.png", 16, maskable=False, rounded=False)
 
 # .ico with multiple sizes
-imgs = [Image.open(f"icons/favicon-{s}.png") for s in [16,32]]
-imgs[0].save("icons/favicon.ico", format="ICO", sizes=[(16,16),(32,32)], append_images=imgs[1:])
+imgs = [Image.open(f"favicon-{s}.png") for s in [16,32]]
+imgs[0].save("favicon.ico", format="ICO", sizes=[(16,16),(32,32)], append_images=imgs[1:])
 
 print("done")
